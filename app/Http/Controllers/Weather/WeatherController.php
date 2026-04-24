@@ -43,4 +43,39 @@ class WeatherController extends Controller
             'condition'   => $data['weather'][0]['description'],
         ]);
     }
+
+
+    public function index()
+    {
+        $response = Http::baseUrl(config('services.jsonplaceholder.url'))
+            ->get('/posts');
+
+        if ($response->failed()) {
+            return response()->json(['message' => 'Could not fetch posts'], $response->status());
+        }
+
+        // Take only first 10 so it's not overwhelming
+        $posts = collect($response->json())->take(10)->map(fn($post) => [
+            'id'      => $post['id'],
+            'user_id' => $post['userId'],
+            'title'   => $post['title'],
+            'body'    => $post['body'],
+        ]);
+
+        return response()->json(['data' => $posts]);
+    }
+
+    // GET — fetch one post by id
+    public function showdetail($id)
+    {
+        $response = Http::baseUrl(config('services.jsonplaceholder.url'))
+            ->get("/posts/{$id}");
+
+        if ($response->failed()) {
+            return response()->json(['message' => 'Post not found'], 404);
+        }
+
+        return response()->json(['data' => $response->json()]);
+    }
+
 }

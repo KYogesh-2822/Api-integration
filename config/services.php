@@ -39,7 +39,10 @@ return [
         'base_url' => env('OPENWEATHER_BASE_URL', 'https://api.openweathermap.org/data/2.5'),
         'key'      => env('OPENWEATHER_API_KEY'),
         'timeout'  => (int) env('OPENWEATHER_TIMEOUT', 10),
-    ]
+    ],
 
+    'jsonplaceholder' => [
+        'url' => env('JSONPLACEHOLDER_URL'),
+    ],
 
 ];
