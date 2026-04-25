@@ -20,7 +20,11 @@ Route::get('/userdetail', function () {
   });
 
 
+Route::get('/places', [WeatherController::class, 'searchPlaces']);
+Route::get('/weather/coords', [WeatherController::class, 'showByCoords']);
 Route::get('/weather/{city}', [WeatherController::class, 'show']);
+Route::get('/forecast/coords', [WeatherController::class, 'forecastByCoords']);
+Route::get('/forecast/{city}', [WeatherController::class, 'forecast']);
 Route::get('/show-user-index/', [WeatherController::class, 'index']);
 Route::get('/user-detail/{id}', [WeatherController::class, 'showdetail']);
 
