@@ -41,6 +41,10 @@ return [
         'timeout'  => (int) env('OPENWEATHER_TIMEOUT', 10),
     ],
 
+    'google_maps' => [
+        'key' => env('GOOGLE_MAPS_API_KEY'),
+    ],
+
     'jsonplaceholder' => [
         'url' => env('JSONPLACEHOLDER_URL'),
     ],

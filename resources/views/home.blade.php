@@ -10,7 +10,42 @@
 
     <style>
         body { background: #f1f5f9; }
-        #map { height: 400px; border-radius: 12px; overflow: hidden; }
+        .maps-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .maps-row > section {
+            height: 400px;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+        @media (max-width: 700px) {
+            .maps-row { grid-template-columns: 1fr; }
+        }
+        .map-label {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            z-index: 5;
+            background: rgba(255,255,255,0.9);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .map-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            background: #e2e8f0;
+            color: #64748b;
+            font-size: 13px;
+            text-align: center;
+            padding: 16px;
+        }
         .day-card { text-align: center; }
         .day-card .icon { width: 56px; height: 56px; }
         .temp-big { font-size: 3rem; font-weight: 600; line-height: 1; }
@@ -40,7 +75,19 @@
             <p class="text-muted col-12">Loading forecast…</p>
         </section>
 
-        <section id="map" class="shadow-sm mb-3"></section>
+        <div class="maps-row mb-3">
+            <section id="map-leaflet" class="shadow-sm">
+                <span class="map-label">OpenStreetMap</span>
+            </section>
+            <section id="map-google" class="shadow-sm">
+                <span class="map-label">Google Maps</span>
+                @if(! config('services.google_maps.key'))
+                    <div class="map-placeholder">
+                        curruntly disable.
+                    </div>
+                @endif
+            </section>
+        </div>
 
         <p id="status" class="text-muted small"></p>
 
@@ -48,6 +95,12 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    @if(config('services.google_maps.key'))
+        <script async defer
+            src="https://maps.googleapis.com/maps/api/js?key={{ config('services.google_maps.key') }}&callback=initGoogleMap">
+        </script>
+    @endif
 
     <script>
         // ---------- tiny helpers ----------
@@ -90,20 +143,64 @@
             $('forecast-strip').innerHTML = cards;
         }
 
-        // ---------- map ----------
-        let map, marker;
-        function setMap(lat, lon, label) {
-            if (!map) {
-                map = L.map('map').setView([lat, lon], 10);
+        // ---------- Leaflet map ----------
+        let lMap, lMarker;
+        function setLeafletMap(lat, lon, label) {
+            if (!lMap) {
+                lMap = L.map('map-leaflet').setView([lat, lon], 10);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     attribution: '&copy; OpenStreetMap'
-                }).addTo(map);
-                marker = L.marker([lat, lon]).addTo(map);
+                }).addTo(lMap);
+                lMarker = L.marker([lat, lon]).addTo(lMap);
             } else {
-                map.setView([lat, lon], 10);
-                marker.setLatLng([lat, lon]);
+                lMap.setView([lat, lon], 10);
+                lMarker.setLatLng([lat, lon]);
             }
-            if (label) marker.bindPopup(label).openPopup();
+            if (label) lMarker.bindPopup(label).openPopup();
+        }
+
+        // ---------- Google map ----------
+        // The Google SDK loads asynchronously and calls window.initGoogleMap when ready.
+        // If we get coords before the SDK is loaded, stash them in pendingCoords so
+        // initGoogleMap can apply them on arrival.
+        let gMap, gMarker, gReady = false, pendingCoords = null;
+
+        window.initGoogleMap = () => {
+            gReady = true;
+            if (pendingCoords) {
+                setGoogleMap(...pendingCoords);
+                pendingCoords = null;
+            }
+        };
+
+        function setGoogleMap(lat, lon, label) {
+            if (!window.google || !gReady) {
+                // SDK not loaded yet (or no API key configured) — remember coords
+                pendingCoords = [lat, lon, label];
+                return;
+            }
+            if (!gMap) {
+                gMap = new google.maps.Map(document.getElementById('map-google'), {
+                    center: { lat, lng: lon },
+                    zoom: 10,
+                    mapTypeControl: false,
+                    streetViewControl: false,
+                });
+                gMarker = new google.maps.Marker({
+                    position: { lat, lng: lon },
+                    map: gMap,
+                    title: label || '',
+                });
+            } else {
+                gMap.setCenter({ lat, lng: lon });
+                gMarker.setPosition({ lat, lng: lon });
+                if (label) gMarker.setTitle(label);
+            }
+        }
+
+        function setMaps(lat, lon, label) {
+            setLeafletMap(lat, lon, label);
+            setGoogleMap(lat, lon, label);
         }
 
         // ---------- loaders ----------
@@ -116,7 +213,7 @@
                 ]);
                 renderCurrent(current);
                 renderForecast(forecast);
-                setMap(current.lat, current.lon, current.city);
+                setMaps(current.lat, current.lon, current.city);
                 setStatus('');
             } catch (err) {
                 setStatus('Could not load weather: ' + err.message);
@@ -132,7 +229,7 @@
                 ]);
                 renderCurrent(current);
                 renderForecast(forecast);
-                setMap(current.lat, current.lon, current.city);
+                setMaps(current.lat, current.lon, current.city);
                 setStatus('');
             } catch (err) {
                 setStatus(`Could not find "${city}". Try another spelling.`);
