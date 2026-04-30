@@ -91,6 +91,12 @@
 
         <p id="status" class="text-muted small"></p>
 
+
+
+
+
+         <a href="{{route('profile')}}">click here to test</a>
+
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
