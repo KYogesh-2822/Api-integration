@@ -8,3 +8,11 @@ Route::get('/auth/{provider}/redirect', [SocialAuthController::class, 'redirect'
 
 Route::get('/auth/{provider}/callback', [SocialAuthController::class, 'callback'])
     ->where('provider', 'google|facebook');
+
+Route::middleware('auth')->group(function(){
+    Route::get('/dashboard',[SocialAuthController::class,'dashboard'])->name('user.dashboard');
+
+    Route::post('/logout',[SocialAuthController::class, 'logout'])->name('logout');
+
+});
+

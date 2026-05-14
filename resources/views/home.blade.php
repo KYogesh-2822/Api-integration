@@ -99,15 +99,40 @@
 
     </div>
 
-    <a href="{{ route('social.redirect', 'google') }}"
-    class="btn btn-google">
-        <img src="{{ url('/images/svg/icons8-google.svg') }}" width="20"> Sign in with Google
+
+    @if (session('error'))
+    <div class="alert alert-danger">{{ session('error') }}</div>
+    @elseif(session('success'))
+    <div class="alert alert-green">{{ session('success') }}</div>
+    @endif
+
+
+   @auth
+
+    @if(auth()->user()->avatar)
+        <img src="{{ auth()->user()->avatar }}" alt="{{ auth()->user()->name }}">
+    @else
+        <img src="{{ asset('images/images.png') }}" alt="default avatar">
+    @endif
+    <h1>User: {{ auth()->user()->name }}</h1>
+        <form action="{{ route('logout') }}" method="POST">
+            @csrf
+            <button type="submit">Logout</button>
+        </form>
+    @endauth
+    {{-- your existing email/password form here --}}
+
+    <hr>
+    <p class="text-center">Or continue with</p>
+
+    <a href="{{ route('social.redirect', 'google') }}" class="btn btn-outline-danger w-100 mb-2"><img src="{{ url('/images/svg/icons8-google.svg') }}" width="20">
+        Sign in with Google
     </a>
 
-    <a href="{{ route('social.redirect', 'facebook') }}"
-    class="btn btn-facebook">
-        <img src="{{ url('/images/svg/icons8-facebook.svg')}}" width="20"> Sign in with Facebook
+    <a href="{{ route('social.redirect', 'facebook') }}" class="btn btn-outline-primary w-100"><img src="{{ url('/images/svg/icons8-facebook.svg')}}" width="20"> 
+        Sign in with Facebook
     </a>
+
 
 
 
