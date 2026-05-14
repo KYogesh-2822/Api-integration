@@ -99,6 +99,18 @@
 
     </div>
 
+    <a href="{{ route('social.redirect', 'google') }}"
+    class="btn btn-google">
+        <img src="{{ url('/images/svg/icons8-google.svg') }}" width="20"> Sign in with Google
+    </a>
+
+    <a href="{{ route('social.redirect', 'facebook') }}"
+    class="btn btn-facebook">
+        <img src="{{ url('/images/svg/icons8-facebook.svg')}}" width="20"> Sign in with Facebook
+    </a>
+
+
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
