@@ -4,6 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Weather</title>
+        <script src="https://js.stripe.com/v3/"></script>
+
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -65,6 +67,53 @@
             </form>
         </header>
 
+
+         <h1>Stripe Payment</h1>
+        <p>Amount: $10.00</p>
+        
+        <!-- Stripe Elements container -->
+        <div id="card-element" style="width: 300px; margin: 20px auto;"></div>
+        <div id="message"></div>
+        
+        <button id="pay-button">Pay Now</button>
+
+
+                    
+            @if (session('error'))
+            <div class="alert alert-danger">{{ session('error') }}</div>
+            @elseif(session('success'))
+            <div class="alert alert-green">{{ session('success') }}</div>
+            @endif
+
+
+        @auth
+
+            @if(auth()->user()->avatar)
+                <img src="{{ auth()->user()->avatar }}" alt="{{ auth()->user()->name }}">
+            @else
+                <img src="{{ asset('images/images.png') }}" alt="default avatar">
+            @endif
+            <h1>User: {{ auth()->user()->name }}</h1>
+                <form action="{{ route('logout') }}" method="POST">
+                    @csrf
+                    <button type="submit">Logout</button>
+                </form>
+            @endauth
+            {{-- your existing email/password form here --}}
+
+            <hr>
+            <p class="text-center">Or continue with</p>
+
+            <a href="{{ route('social.redirect', 'google') }}" class="btn btn-outline-danger w-100 mb-2"><img src="{{ url('/images/svg/icons8-google.svg') }}" width="20">
+                Sign in with Google
+            </a>
+
+            <a href="{{ route('social.redirect', 'facebook') }}" class="btn btn-outline-primary w-100"><img src="{{ url('/images/svg/icons8-facebook.svg')}}" width="20"> 
+                Sign in with Facebook
+            </a>
+
+
+
         <section id="current-card" class="card shadow-sm mb-4">
             <div class="card-body">
                 <p class="text-muted m-0">Loading current weather…</p>
@@ -100,38 +149,6 @@
     </div>
 
 
-    @if (session('error'))
-    <div class="alert alert-danger">{{ session('error') }}</div>
-    @elseif(session('success'))
-    <div class="alert alert-green">{{ session('success') }}</div>
-    @endif
-
-
-   @auth
-
-    @if(auth()->user()->avatar)
-        <img src="{{ auth()->user()->avatar }}" alt="{{ auth()->user()->name }}">
-    @else
-        <img src="{{ asset('images/images.png') }}" alt="default avatar">
-    @endif
-    <h1>User: {{ auth()->user()->name }}</h1>
-        <form action="{{ route('logout') }}" method="POST">
-            @csrf
-            <button type="submit">Logout</button>
-        </form>
-    @endauth
-    {{-- your existing email/password form here --}}
-
-    <hr>
-    <p class="text-center">Or continue with</p>
-
-    <a href="{{ route('social.redirect', 'google') }}" class="btn btn-outline-danger w-100 mb-2"><img src="{{ url('/images/svg/icons8-google.svg') }}" width="20">
-        Sign in with Google
-    </a>
-
-    <a href="{{ route('social.redirect', 'facebook') }}" class="btn btn-outline-primary w-100"><img src="{{ url('/images/svg/icons8-facebook.svg')}}" width="20"> 
-        Sign in with Facebook
-    </a>
 
 
 
@@ -362,6 +379,76 @@
         }
 
         init();
+
+
+
+
+         const stripe = Stripe('{{ config('services.stripe.key') }}');
+        const elements = stripe.elements();
+        const cardElement = elements.create('card');
+        cardElement.mount('#card-element');
+
+        const payButton = document.getElementById('pay-button');
+        const messageDiv = document.getElementById('message');
+
+        payButton.addEventListener('click', async () => {
+            payButton.disabled = true;
+            messageDiv.textContent = 'Processing...';
+            
+            // 1. Get client secret from our server
+            const response = await fetch('/create-payment-intent', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (!response.ok) {
+                messageDiv.textContent = 'Error: ' + data.message;
+                payButton.disabled = false;
+                return;
+            }
+            
+            // 2. Confirm the payment with Stripe
+            const { error, paymentIntent } = await stripe.confirmCardPayment(data.clientSecret, {
+                payment_method: {
+                    card: cardElement
+                }
+            });
+            
+            if (error) {
+                messageDiv.textContent = 'Payment failed: ' + error.message;
+                payButton.disabled = false;
+            } else if (paymentIntent.status === 'succeeded') {
+                // Send payment data to server to save
+                const saveResponse = await fetch('/save-payment', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        payment_intent_id: paymentIntent.id,
+                        amount: 1000,
+                        currency: 'usd'
+                    })
+                });
+                
+                if (saveResponse.ok) {
+                    messageDiv.textContent = 'Payment successful and saved!';
+                    messageDiv.style.color = 'green';
+                } else {
+                    messageDiv.textContent = 'Payment succeeded but failed to save record.';
+                }
+                payButton.disabled = false;
+            }
+        });
+
+
+
     </script>
 </body>
 </html>

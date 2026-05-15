@@ -12,7 +12,7 @@ class WeatherController extends Controller
     public function show($city)
     {
         // Step 1: Call the third-party API
-       $response = Http::get(config('services.openweather.base_url') . '/weather', [
+        $response = $this->openWeatherHttpClient()->get(config('services.openweather.base_url') . '/weather', [
             'q'     => $city,
             'appid' => config('services.openweather.key'),
             'units' => 'metric',
@@ -55,7 +55,7 @@ class WeatherController extends Controller
         ]);
 
         // Step B: call OpenWeather with lat/lon instead of q
-        $response = Http::get(config('services.openweather.base_url') . '/weather', [
+        $response = $this->openWeatherHttpClient()->get(config('services.openweather.base_url') . '/weather', [
             'lat'   => $request->query('lat'),
             'lon'   => $request->query('lon'),
             'appid' => config('services.openweather.key'),
@@ -90,7 +90,7 @@ class WeatherController extends Controller
 
         // Geocoding is a different OpenWeather endpoint family — geo/1.0, not data/2.5.
         // It finds smaller places (towns, districts, villages) that the weather endpoint can't.
-        $response = Http::get('https://api.openweathermap.org/geo/1.0/direct', [
+        $response = $this->openWeatherHttpClient()->get('https://api.openweathermap.org/geo/1.0/direct', [
             'q'     => $request->query('q'),
             'limit' => 5,
             'appid' => config('services.openweather.key'),
@@ -117,7 +117,7 @@ class WeatherController extends Controller
 
     public function forecast($city)
     {
-        $response = Http::get(config('services.openweather.base_url') . '/forecast', [
+        $response = $this->openWeatherHttpClient()->get(config('services.openweather.base_url') . '/forecast', [
             'q'     => $city,
             'appid' => config('services.openweather.key'),
             'units' => 'metric',
@@ -141,7 +141,7 @@ class WeatherController extends Controller
             'lon' => 'required|numeric',
         ]);
 
-        $response = Http::get(config('services.openweather.base_url') . '/forecast', [
+        $response = $this->openWeatherHttpClient()->get(config('services.openweather.base_url') . '/forecast', [
             'lat'   => $request->query('lat'),
             'lon'   => $request->query('lon'),
             'appid' => config('services.openweather.key'),
@@ -204,6 +204,13 @@ class WeatherController extends Controller
             'country' => $data['city']['country'] ?? null,
             'days'    => array_slice($days, 0, 5),
         ];
+    }
+
+    private function openWeatherHttpClient()
+    {
+        return Http::withOptions([
+            'verify' => !app()->isLocal(),
+        ]);
     }
 
 
