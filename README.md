@@ -7,19 +7,56 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
-## About Laravel
+## Project Description
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+This application demonstrates social login and Stripe PaymentIntent integration.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- Users can log in using social media accounts via Google or Facebook.
+- The app uses Stripe PaymentIntent for one-time payment processing.
+- Payment flow is handled in the browser with Stripe Elements.
+- The server stores payment status locally and updates it from Stripe webhooks.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Payment Flow and Webhook Notes
+
+This project includes Stripe payment integration using a payment intent flow and Stripe webhooks.
+
+1. User visits the payment page:
+   - `GET /stripe-payment-intent`
+   - `App\Http\Controllers\stripe\PaymentIntendController@showForm`
+   - returns `resources/views/home.blade.php`
+
+2. Frontend requests a Stripe PaymentIntent:
+   - `POST /create-payment-intent`
+   - `PaymentIntendController@createIntent`
+   - creates a Stripe PaymentIntent for $10.00 (1000 cents)
+   - returns `clientSecret`
+
+3. Stripe confirms payment in the browser:
+   - JavaScript calls `stripe.confirmCardPayment(clientSecret, { payment_method: { card } })`
+   - Stripe validates the card and processes the payment
+
+4. Success path:
+   - if Stripe returns `paymentIntent.status === 'succeeded'`
+   - browser calls `POST /save-payment`
+   - `PaymentIntendController@savePayment` stores the payment record locally
+   - status is saved as `succeeded`
+
+5. Failure path:
+   - if Stripe returns an immediate error, the browser shows `Payment failed: ...`
+   - no local save request is made
+
+6. Webhook processing:
+   - Stripe sends events to `POST /stripe/webhook`
+   - handled by `App\Http\Controllers\stripe\StripeWebhookController@handleWebhook`
+   - verifies signature using `services.stripe.webhook_secret`
+   - updates local `payment_intents` record based on event type
+
+7. Webhook events handled:
+   - `payment_intent.created` → status `created`
+   - `payment_intent.succeeded` → status `succeeded`
+   - `payment_intent.payment_failed` → status `failed`
+
+> Note: the webhook records Stripe payment status but does not automatically retry failed payments.
 
 ## Learning Laravel
 
